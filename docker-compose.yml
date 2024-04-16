@@ -1,0 +1,44 @@
+version: "3.8"
+
+volumes:
+  downloader-mysql-data:
+    driver: local
+  
+  downloader-redis-data:
+    driver: local
+
+services:
+  downloader-php:
+    build: ./docker/php
+    container_name: downloader-php
+    working_dir: /var/www/app
+    command: sh -c "composer install && php bin/hyperf.php key:generate && composer watch"
+    ports:
+      - "7020:9501"
+    volumes:
+      - ./:/var/www/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    links:
+      - "downloader-mysql:database"
+      - "downloader-redis:cache"
+
+  downloader-mysql:
+    build: ./docker/mysql
+    container_name: downloader-mysql
+    volumes:
+      - downloader-mysql-data:/var/lib/mysql
+    ports:
+      - "7021:3306"
+    environment:
+      - "MYSQL_DATABASE=downloader"
+      - "MYSQL_ROOT_PASSWORD=root"
+
+  downloader-redis:
+    image: redis:alpine
+    command: redis-server
+    container_name: downloader-redis
+    volumes:
+      - downloader-redis-data:/data
+    ports:
+      - 7022:6379
